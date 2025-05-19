@@ -64,3 +64,8 @@ coverage
 *.temp
 
 .wrangler
+
+# Database seed chunks
+scripts/seed-chunks/
+# Keep the main database.sqlite but ignore local D1 database
+.wrangler/state/d1/

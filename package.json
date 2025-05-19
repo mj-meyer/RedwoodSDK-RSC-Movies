@@ -11,8 +11,13 @@
     "clean": "rm -rf node_modules/.vite",
     "release": "npm run clean && npm run build && wrangler deploy",
     "db:create": "wrangler d1 create rsc_movies_rwsdk",
-    "db:seed": "wrangler d1 execute rsc_movies_rwsdk --local --file migrations/0001_init.sql",
-    "db:seed:prod": "wrangler d1 execute rsc_movies_rwsdk --file migrations/0001_init.sql"
+    "db:export:schema": "node scripts/export-schema.js",
+    "db:export:data": "node scripts/export-seed-data.js",
+    "db:init": "node scripts/import-to-d1.js",
+    "db:migrate:local": "wrangler d1 migrations apply rsc_movies_rwsdk --local",
+    "db:migrate:prod": "wrangler d1 migrations apply rsc_movies_rwsdk --remote",
+    "db:seed:local": "wrangler d1 execute rsc_movies_rwsdk --local --file scripts/seed.sql",
+    "db:seed:prod": "wrangler d1 execute rsc_movies_rwsdk --remote --file scripts/seed.sql"
   },
   "dependencies": {
     "@ryanflorence/batch-loader": "^0.0.1",
