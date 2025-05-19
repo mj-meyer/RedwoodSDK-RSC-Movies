@@ -1,45 +1,40 @@
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { batch } from "@ryanflorence/batch-loader";
-import { env } from "cloudflare:workers";
 import { render, route } from "rwsdk/router";
 import { defineApp } from "rwsdk/worker";
-import { Movie } from "./app/pages/Movie";
-import { MovieBatch } from "./app/pages/MovieBatch";
 import { Home } from "./app/pages/home";
+import { batchActors, batchMovies } from "./app/db";
+import { Movie } from "./app/pages/movie";
+import { Actor } from "./app/pages/actor";
 
 export type AppContext = {
-  queries: number;
   load: {
     actor: (id: number) => Promise<any>;
+    movie: (id: number) => Promise<any>;
   };
 };
 
-function createLoaders(env: Cloudflare.Env) {
+/**
+ * Create the batched/cached loading functions so queries are naturally
+ * efficient regardless of the UI on the page (solves n+1 queries and
+ * refetching, based on GraphQL DataLoader)
+ */
+function createLoaders() {
   return {
-    actor: batch(async (ids: number[]) => {
-      const qs = ids.map(() => "?").join(",");
-      const { results } = await env.DB.prepare(
-        `SELECT id, name FROM actors WHERE id IN (${qs})`,
-      )
-        .bind(...ids)
-        .all<{ id: number; name: string }>();
-      const map = new Map(results.map((r) => [r.id, r]));
-      return ids.map((id) => map.get(id) ?? null); // maintain order!
-    }),
+    movie: batch(batchMovies),
+    actor: batch(batchActors),
   };
 }
 
 export default defineApp([
   setCommonHeaders(),
+  ({ ctx }) => {
+    ctx.load = createLoaders();
+  },
   render(Document, [
     route("/", Home),
     route("/movie/:id", Movie),
-    route("/movie/:id/batch", [
-      ({ ctx }) => {
-        ctx.load = createLoaders(env);
-      },
-      MovieBatch,
-    ]),
+    route("/actor/:id", Actor),
   ]),
 ]);
