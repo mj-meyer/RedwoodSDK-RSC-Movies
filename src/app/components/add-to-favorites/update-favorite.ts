@@ -1,13 +1,17 @@
 "use server";
 
-import { addSessionFavorite, removeSessionFavorite } from "../../favorites.ts";
+import { addFavorite, removeFavorite } from "@/app/db.js";
+import { requestInfo } from "rwsdk/worker";
 
 export async function updateFavorite(formData: FormData) {
+  const {
+    ctx: { session },
+  } = requestInfo;
   let movieId = formData.get("id");
   let intent = formData.get("intent");
   if (intent === "add") {
-    await addSessionFavorite(Number(movieId));
+    await addFavorite(session.id, Number(movieId));
   } else {
-    await removeSessionFavorite(Number(movieId));
+    await removeFavorite(session.id, Number(movieId));
   }
 }

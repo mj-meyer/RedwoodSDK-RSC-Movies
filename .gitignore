@@ -69,3 +69,7 @@ coverage
 scripts/seed-chunks/
 # Keep the main database.sqlite but ignore local D1 database
 .wrangler/state/d1/
+
+# SQLite temporary files
+*.sqlite-shm
+*.sqlite-wal
