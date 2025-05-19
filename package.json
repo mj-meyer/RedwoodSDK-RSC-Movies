@@ -21,7 +21,9 @@
   },
   "dependencies": {
     "@ryanflorence/batch-loader": "^0.0.1",
-    "rwsdk": "0.0.83"
+    "@tailwindcss/vite": "^4.1.7",
+    "rwsdk": "0.0.83",
+    "tailwindcss": "^4.1.7"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
