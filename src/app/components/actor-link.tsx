@@ -1,10 +1,11 @@
-import { env } from "cloudflare:workers";
+import { AppContext } from "@/worker";
 
-export async function ActorLink({ id }: { id: number }) {
-  // one separate network hop for every actor
-  const row = await env.DB.prepare("SELECT id, name FROM actors WHERE id = ?")
-    .bind(id)
-    .first<any>();
-
-  return <a href={`/actor/${row.id}`}>{row.name}</a>;
+export async function ActorLink({ ctx, id }: { ctx: AppContext; id: number }) {
+  const actor = await ctx.load.actor(id);
+  if (!actor) return null;
+  return (
+    <a href={`/actor/${actor.id}`} className="text-[#1458E1] hover:underline">
+      {actor.name}
+    </a>
+  );
 }
