@@ -1,145 +1,114 @@
-# RSC N + 1 Demo on RedwoodSDK
+# RSC Movies in RedwoodSDK
 
-This repo shows **why a request‑scoped batch loader matters on Cloudflare D1** and how easy it is to wire one up with [`@ryanflorence/batch-loader`](https://github.com/ryanflorence/batch-loader).
+This project showcases React Server Components (RSC) implementation in Redwood SDK, using Ryan Florence's [RSC Movies demo](https://github.com/ryanflorence/rsc-movies) as inspiration.
 
-| Route            | Queries Fired | Explanation                                                                                                                                   |
-| ---------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/movie/1`       | **27**        | _Naïve._ One query for the movie, one for the cast list, and 25 more from each `<ActorLink>` component doing its own `SELECT … WHERE id = ?`. |
-| `/movie/1/batch` | **3**         | _Batched._ One query for the movie, one for the cast list, and one `IN (…)` for all actor details.                                            |
+## About This Project
 
-The query count is surfaced via an **`X‑Query‑Count`** response header and `echoed to the console`.
+This is a port of the [React Router RSC Preview demo](https://remix.run/blog/rsc-preview) to RedwoodSDK. The goal wasn't to prove one framework better than another, but to explore how Redwood SDK approaches RSC and to learn more about its capabilities.
 
----
+I tried to stick closely to the React Router example, though some aspects may not be idiomatic RedwoodSDK. The implementation shows how lightweight yet powerful RedwoodSDK can be, especially when combined with modern concepts like RSC and Cloudflare's infrastructure.
 
-## Quick Start
+## Key Features
 
-```bash
-pnpm install
-pnpm db:create        # one‑time – creates the D1 database in your CF account
-pnpm db:seed          # local fill (migrations/0001_init.sql)
-pnpm dev
-```
+- **React Server Components (RSC)** - Leveraging React's latest component model
+- **Cloudflare Integration** - Built for Cloudflare Workers and D1 database
+- **Durable Objects Session Store** - Simple session management without login (generates a cookie on first visit)
+- **Batch Loading Pattern** - Using Ryan Florence's [`@ryanflorence/batch-loader`](https://github.com/ryanflorence/batch-loader) to efficiently solve the N+1
+  query problem
 
-Open [http://localhost:5173/](http://localhost:5173/) and click the _naïve_ / _batched_ buttons.
+## Notable Implementation Details
 
-### Deploy to Cloudflare
+### Batched Database Queries
 
-```bash
-pnpm release          # builds + wrangler deploy
-pnpm db:seed:prod     # run once to seed the remote DB
-```
+D1 has a limit of 32 variables per query. To handle this, I implemented a `batchQuery` utility that:
 
----
-
-## How Batching Works
-
-1. **Middleware** attaches a per‑request `ctx.load` created with `@ryanflorence/batch-loader`.
-2. Every `ctx.load.actor(id)` call is memoised until the event‑loop yields.
-3. On flush the loader issues **one** `SELECT id, name FROM actors WHERE id IN (…)`.
-4. All awaiting components resume with their row; duplicate IDs cost **zero** extra round trips.
-
----
-
-## Why This Matters on D1
-
-In the naïve implementation, each <ActorLink> component independently fetches a single row from the database:
+1. Chunks requests into groups of 30 or fewer
+2. Preserves the original ordering of results
+3. Handles single-query optimization when under the limit
 
 ```ts
-export async function ActorLink({ ctx, id }) {
-  const actor = await ctx.env.DB
-    .prepare("SELECT id, name FROM actors WHERE id = ?")
-    .bind(id)
-    .first();
+async function batchQuery<T, K>(
+  ids: K[],
+  batchFn: (chunk: K[]) => Promise<T[]>,
+  getKey: (item: T) => K,
+  batchSize = 30, // D1 has a 32 variable limit
+) {
+  // If we're under the limit, use a single query
+  if (ids.length <= batchSize) {
+    const results = await batchFn(ids);
+    // Create a map for O(1) lookups
+    const resultMap = new Map(results.map((item) => [getKey(item), item]));
+    // Return in exact same order as input ids
+    return ids.map((id) => resultMap.get(id));
+  }
 
-  return <a href={`/actor/${actor.id}`}>{actor.name}</a>;
+  // Otherwise, split into chunks and combine results
+  const resultMap = new Map();
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const chunk = ids.slice(i, i + batchSize);
+    const chunkResults = await batchFn(chunk);
+    // Add all results to the map
+    chunkResults.forEach((item) => resultMap.set(getKey(item), item));
+  }
+
+  // Return in exact same order as input ids
+  return ids.map((id) => resultMap.get(id));
 }
 ```
 
-Each DB call is a network hop out of the Worker isolate. In this example, it happens 25 times on a single page render, once per actor ID. So the naïve code (the classic “N + 1” problem) scales linearly with component count. On a page with many RSC components doing DB queries, it can easily start to hit Cloudflare limits. Batching collapses those hops and keeps renders predictable.
+### RedwoodSDK Middleware for Data Loading
 
-### Why not just lift the query up to a parent component?
-
-It's indeed a solid approach and definitely something to consider when doing any DB work. But it has its own set of tradeoffs. For example:
-
-1. **Reusability**: A component like `<ActorLink>` can be used across routes without knowing how it gets its data.
-2. **Separation of concerns**: Your layout or page doesn’t need to fetch the entire graph of things the child components need.
-3. **RSC laziness**: You might not even render some server components depending on Suspense conditions or props—so lifting queries prematurely wastes work.
-4. **Co-location**: You want the query near the markup that uses it—so you can read, maintain, and test it in one place.
-
----
-
-### Copy‑Paste Pattern for Your App
+The app uses RedwoodSDK middleware to attach the batch loader to the request context:
 
 ```ts
-import { batch } from "@ryanflorence/batch-loader";
-
-export const loaders = {
-  actor: batch(async (ids: number[]) => {
-    const qs = ids.map(() => "?").join(",");
-    const { results } = await env.DB.prepare(
-      `SELECT id, name FROM actors WHERE id IN (${qs})`,
-    )
-      .bind(...ids)
-      .all<{ id: number; name: string }>();
-
-    const map = new Map(results.map((r) => [r.id, r]));
-    return ids.map((id) => map.get(id) ?? null);
-  }),
-};
-
-// middleware
-ctx.load = loaders;
+export default defineApp([
+  setCommonHeaders(),
+  setupSession,
+  ({ ctx }) => {
+    ctx.load = createLoaders();
+  },
+  render(Document, [
+    route("/", Home),
+    route("/movie/:id", Movie),
+    route("/actor/:id", Actor),
+  ]),
+]);
 ```
 
-That’s the whole trick—no ORM required.
+## Getting Started
 
----
+```bash
+# Install dependencies
+pnpm install
 
-## Using an ORM? (Drizzle & Prisma)
+# First-time database setup
+pnpm db:create         # Creates D1 database in your CF account
 
-> The batching **pattern** is identical—you just swap the raw‑SQL in the loader for your ORM’s query helper so you still return rows **in the same order** as the input keys.
+# The migration and seed files are already committed to the repo,
+# so you can skip to these steps:
+pnpm db:migrate:local  # Apply migrations to local D1
+pnpm db:seed:local     # Seed the local D1 database
 
-### Drizzle
-
-```ts
-import { db, schema } from "@/drizzle";
-import { inArray, eq } from "drizzle-orm/sqlite-core";
-import { batch } from "@ryanflorence/batch-loader";
-
-export const loaders = {
-  actor: batch(async (ids: number[]) => {
-    const rows = await db
-      .select()
-      .from(schema.actors)
-      .where(inArray(schema.actors.id, ids));
-
-    const map = new Map(rows.map((r) => [r.id, r]));
-    return ids.map((id) => map.get(id) ?? null);
-  }),
-};
+# Start development server
+pnpm dev
 ```
 
-### Prisma
+> **Note:** The following steps are only necessary if you need to rebuild the migration or seed files:
+> ```bash
+> pnpm db:export:schema  # Extract schema from SQLite for migrations
+> pnpm db:export:data    # Extract data from SQLite for seed files
+> ```
 
-```ts
-import { PrismaClient } from "@prisma/client";
-import { batch } from "@ryanflorence/batch-loader";
+## Deploy to Cloudflare
 
-const prisma = new PrismaClient();
-
-export const loaders = {
-  actor: batch(async (ids: string[]) => {
-    const rows = await prisma.actor.findMany({ where: { id: { in: ids } } });
-    const map = new Map(rows.map((r) => [r.id, r]));
-    return ids.map((id) => map.get(id) ?? null);
-  }),
-};
+```bash
+pnpm release           # Builds + deploys with wrangler
+pnpm db:migrate:prod   # Apply migrations to production D1
+pnpm db:seed:prod      # Seed the production database (run once)
 ```
 
-Both loaders drop straight into the same RWSDK middleware:
+## Reflections on RedwoodSDK
 
-```ts
-ctx.load = loaders;
-```
+What stands out about RedwoodSDK is how it manages to be lightweight yet powerful. It doesn't rely on hidden magic, making it predictable and transparent, while still providing all the tools needed to build complex applications.
 
-Whether you stay on raw SQL or adopt an ORM later, the components continue to call `await ctx.load.actor(id)` and enjoy the same one‑query‑per‑request performance.
+The combination of RSC, Cloudflare infrastructure, and RedwoodSDK's approach creates a development experience reminiscent of Laravel for the JavaScript world - but with the flexibility to implement your own patterns and preferences.
