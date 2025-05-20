@@ -10,7 +10,7 @@ export async function Movie({
   params: { id: string };
   ctx: AppContext;
 }) {
-  let movie = await ctx.load.movie(Number(params.id));
+  const movie = await ctx.load.movie(Number(params.id));
   if (!movie) {
     throw new Response("Movie not found", {
       status: 404,
@@ -25,7 +25,7 @@ export async function Movie({
       <div className="p-12 items-center flex flex-col gap-y-12 lg:items-start lg:w-5xl lg:mx-auto lg:flex-row lg:gap-x-12">
         <div className="w-[296px] flex-none flex flex-col gap-y-2">
           <img src={movie.thumbnail} className="h-[435px] object-cover mb-4" />
-          <AddToFavoritesForm ctx={ctx} movieId={movie.id} />
+          <AddToFavoritesForm movieId={movie.id} />
         </div>
 
         <div className="flex-1 flex flex-col gap-y-8">
@@ -40,7 +40,7 @@ export async function Movie({
             <div>
               {movie.cast_ids.map((id, index, arr) => (
                 <span key={id}>
-                  <ActorLink ctx={ctx} id={id} />
+                  <ActorLink id={id} />
                   {index < arr.length - 1 && " • "}
                 </span>
               ))}

@@ -46,9 +46,9 @@ export async function batchMovies(ids: number[]) {
  * Helper function to execute a batch query for movies
  */
 async function executeBatchMoviesQuery(ids: number[]) {
-  let placeholders = ids.map(() => "?").join(",");
+  const placeholders = ids.map(() => "?").join(",");
   // order by year
-  let query = `
+  const query = `
     SELECT 
       m.*,
       JSON_GROUP_ARRAY(DISTINCT mg.genre_id) as genre_ids,
@@ -83,8 +83,8 @@ export async function batchActors(ids: number[]) {
  * Helper function to execute a batch query for actors
  */
 async function executeBatchActorsQuery(ids: number[]) {
-  let placeholders = ids.map(() => "?").join(",");
-  let query = `
+  const placeholders = ids.map(() => "?").join(",");
+  const query = `
     SELECT
       actor.*,
       GROUP_CONCAT(
@@ -116,12 +116,12 @@ export async function getFavorites(sessionId: string) {
     .prepare("SELECT * FROM favorites WHERE session_id = ?")
     .bind(sessionId)
     .all();
-  
+
   return result.results.map((favorite: any) => favorite.movie_id);
 }
 
 export async function addFavorite(sessionId: string, movieId: number) {
-  let alreadyFavorite = await isFavorite(sessionId, movieId);
+  const alreadyFavorite = await isFavorite(sessionId, movieId);
   if (alreadyFavorite) {
     return true;
   }
@@ -143,7 +143,7 @@ export async function isFavorite(sessionId: string, movieId: number) {
     .prepare("SELECT id FROM favorites WHERE session_id = ? AND movie_id = ?")
     .bind(sessionId, movieId)
     .first();
-  
+
   return result !== null;
 }
 

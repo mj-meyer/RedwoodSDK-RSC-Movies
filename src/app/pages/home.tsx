@@ -1,9 +1,8 @@
-import { AppContext } from "@/worker";
 import { MovieGrid } from "../components/movie-grid";
 import { MovieTile } from "../components/movie-tile";
 import { RootLayout } from "../layouts/root";
 
-export async function Home({ ctx }: { ctx: AppContext }) {
+export async function Home() {
   // using const just to spite Ryan ;)
   // but also, const is better
   const featuredMovieIds = [32932, 23643, 29915, 30895, 31472, 33411];
@@ -18,7 +17,7 @@ export async function Home({ ctx }: { ctx: AppContext }) {
       <meta name="keywords" content="demo, redwood, react" />
       <MovieGrid>
         {featuredMovieIds.map((id: number) => (
-          <MovieTile ctx={ctx} key={id} id={id} />
+          <MovieTile key={id} id={id} />
         ))}
       </MovieGrid>
     </RootLayout>

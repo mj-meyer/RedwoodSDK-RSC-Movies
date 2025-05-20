@@ -7,8 +7,9 @@ export async function updateFavorite(formData: FormData) {
   const {
     ctx: { session },
   } = requestInfo;
-  let movieId = formData.get("id");
-  let intent = formData.get("intent");
+
+  const movieId = formData.get("id");
+  const intent = formData.get("intent");
   if (intent === "add") {
     await addFavorite(session.id, Number(movieId));
   } else {

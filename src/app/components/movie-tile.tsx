@@ -1,8 +1,10 @@
+import { requestInfo } from "rwsdk/worker";
 import { ActorLink } from "./actor-link";
 import { AddToFavoritesForm } from "./add-to-favorites/form";
-import { AppContext } from "@/worker";
 
-export async function MovieTile({ ctx, id }: { ctx: AppContext; id: number }) {
+export async function MovieTile({ id }: { id: number }) {
+  const { ctx } = requestInfo;
+
   const movie = await ctx.load.movie(id);
 
   return (
@@ -15,7 +17,7 @@ export async function MovieTile({ ctx, id }: { ctx: AppContext; id: number }) {
         />
       </a>
 
-      <AddToFavoritesForm ctx={ctx} movieId={movie.id} />
+      <AddToFavoritesForm movieId={movie.id} />
 
       <h2 className="font-instrumentSerif text-3xl">
         <a href={`/movie/${movie.id}`} className="hover:underline">
@@ -34,7 +36,7 @@ export async function MovieTile({ ctx, id }: { ctx: AppContext; id: number }) {
         <b className="font-semibold">Starring</b>:{" "}
         {movie.cast_ids.slice(0, 10).map((id, index, arr) => (
           <span key={id}>
-            <ActorLink ctx={ctx} id={id} />
+            <ActorLink id={id} />
             {index < arr.length - 1 && <span className="mx-1">•</span>}
           </span>
         ))}

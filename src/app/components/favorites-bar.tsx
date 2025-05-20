@@ -12,7 +12,7 @@ export async function Favorites() {
         <div className="flex flex-nowrap gap-x-2">
           {favorites.map((id: number) => (
             <div className="flex-shrink-0 snap-start" key={id}>
-              <FavoriteLink ctx={ctx} id={id} />
+              <FavoriteLink id={id} />
             </div>
           ))}
         </div>

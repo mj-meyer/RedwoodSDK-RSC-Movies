@@ -1,12 +1,8 @@
-import { AppContext } from "@/worker";
+import { requestInfo } from "rwsdk/worker";
 
-export async function FavoriteLink({
-  ctx,
-  id,
-}: {
-  ctx: AppContext;
-  id: number;
-}) {
+export async function FavoriteLink({ id }: { id: number }) {
+  const { ctx } = requestInfo;
+
   const movie = await ctx.load.movie(id);
   if (!movie) return null;
   return (

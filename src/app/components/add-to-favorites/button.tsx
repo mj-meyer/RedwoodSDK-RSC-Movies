@@ -2,7 +2,7 @@
 import { useFormStatus } from "react-dom";
 
 export function AddToFavoritesButton({ isLiked }: { isLiked: boolean }) {
-  let { pending } = useFormStatus();
+  const { pending } = useFormStatus();
 
   return (
     <button

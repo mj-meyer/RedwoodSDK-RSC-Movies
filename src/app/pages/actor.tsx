@@ -24,7 +24,7 @@ export async function Actor({
         </div>
         <MovieGrid>
           {actor.movie_ids.map((id: number) => (
-            <MovieTile ctx={ctx} key={id} id={id} />
+            <MovieTile key={id} id={id} />
           ))}
         </MovieGrid>
       </div>

@@ -1,6 +1,8 @@
-import { AppContext } from "@/worker";
+import { requestInfo } from "rwsdk/worker";
 
-export async function ActorLink({ ctx, id }: { ctx: AppContext; id: number }) {
+export async function ActorLink({ id }: { id: number }) {
+  const { ctx } = requestInfo;
+
   const actor = await ctx.load.actor(id);
   if (!actor) return null;
   return (
