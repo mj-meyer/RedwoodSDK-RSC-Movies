@@ -24,9 +24,17 @@ export const setCommonHeaders =
       "geolocation=(), microphone=(), camera=()",
     );
 
+    // Control browser caching for RSC responses to prevent stale data
+    // TODO: figure out a better way than 'no-store' for caching
+    // this is needed for the RSC demo to work properly
+    headers.set(
+      "Cache-Control",
+      "no-store, no-cache, max-age=0, must-revalidate, proxy-revalidate",
+    );
+
     // Defines trusted sources for content loading and script execution:
     headers.set(
       "Content-Security-Policy",
-      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; object-src 'none';`,
+      `default-src 'self'; script-src 'self' 'unsafe-eval' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com/; img-src 'self' data: https://* http://*; font-src 'self' https://fonts.googleapis.com/ https://fonts.gstatic.com/; frame-src https://challenges.cloudflare.com; object-src 'none';`,
     );
   };

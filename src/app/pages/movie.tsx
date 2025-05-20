@@ -1,6 +1,7 @@
 import { AppContext } from "@/worker";
 import { AddToFavoritesForm } from "../components/add-to-favorites/form";
 import { ActorLink } from "../components/actor-link";
+import { RootLayout } from "../layouts/root";
 
 export async function Movie({
   params,
@@ -17,14 +18,14 @@ export async function Movie({
   }
 
   return (
-    <>
+    <RootLayout>
       <title>{movie.title}</title>
       <meta name="description" content={movie.extract} />
 
       <div className="p-12 items-center flex flex-col gap-y-12 lg:items-start lg:w-5xl lg:mx-auto lg:flex-row lg:gap-x-12">
         <div className="w-[296px] flex-none flex flex-col gap-y-2">
           <img src={movie.thumbnail} className="h-[435px] object-cover mb-4" />
-          <AddToFavoritesForm movieId={movie.id} />
+          <AddToFavoritesForm ctx={ctx} movieId={movie.id} />
         </div>
 
         <div className="flex-1 flex flex-col gap-y-8">
@@ -47,6 +48,6 @@ export async function Movie({
           </div>
         </div>
       </div>
-    </>
+    </RootLayout>
   );
 }

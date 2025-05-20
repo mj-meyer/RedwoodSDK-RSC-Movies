@@ -15,7 +15,7 @@ export async function MovieTile({ ctx, id }: { ctx: AppContext; id: number }) {
         />
       </a>
 
-      <AddToFavoritesForm movieId={movie.id} />
+      <AddToFavoritesForm ctx={ctx} movieId={movie.id} />
 
       <h2 className="font-instrumentSerif text-3xl">
         <a href={`/movie/${movie.id}`} className="hover:underline">

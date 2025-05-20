@@ -1,4 +1,4 @@
-import { getFavorites } from "../db";
+import { getFavorites } from "@/db";
 import { FavoriteLink } from "./favorite-link";
 import { requestInfo } from "rwsdk/worker";
 

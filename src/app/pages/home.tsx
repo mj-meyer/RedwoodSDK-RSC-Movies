@@ -1,6 +1,7 @@
 import { AppContext } from "@/worker";
 import { MovieGrid } from "../components/movie-grid";
 import { MovieTile } from "../components/movie-tile";
+import { RootLayout } from "../layouts/root";
 
 export async function Home({ ctx }: { ctx: AppContext }) {
   // using const just to spite Ryan ;)
@@ -8,7 +9,7 @@ export async function Home({ ctx }: { ctx: AppContext }) {
   const featuredMovieIds = [32932, 23643, 29915, 30895, 31472, 33411];
 
   return (
-    <>
+    <RootLayout>
       <title>RedwoodSDK RSC Movies</title>
       <meta
         name="description"
@@ -20,6 +21,6 @@ export async function Home({ ctx }: { ctx: AppContext }) {
           <MovieTile ctx={ctx} key={id} id={id} />
         ))}
       </MovieGrid>
-    </>
+    </RootLayout>
   );
 }

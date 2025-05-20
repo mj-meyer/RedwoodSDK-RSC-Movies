@@ -3,9 +3,49 @@ import { env } from "cloudflare:workers";
 const db = env.DB;
 
 /**
+ * Utility function to handle batch queries with D1's 32 variable limit
+ * Executes queries in chunks and preserves input order
+ * https://developers.cloudflare.com/d1/platform/limits/
+ */
+async function batchQuery<T, K>(
+  ids: K[],
+  batchFn: (chunk: K[]) => Promise<T[]>,
+  getKey: (item: T) => K,
+  batchSize = 30,
+) {
+  // If we're under the limit, use a single query
+  if (ids.length <= batchSize) {
+    const results = await batchFn(ids);
+    // Create a map for O(1) lookups
+    const resultMap = new Map(results.map((item) => [getKey(item), item]));
+    // Return in exact same order as input ids
+    return ids.map((id) => resultMap.get(id));
+  }
+
+  // Otherwise, split into chunks and combine results
+  const resultMap = new Map();
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const chunk = ids.slice(i, i + batchSize);
+    const chunkResults = await batchFn(chunk);
+    // Add all results to the map
+    chunkResults.forEach((item) => resultMap.set(getKey(item), item));
+  }
+
+  // Return in exact same order as input ids
+  return ids.map((id) => resultMap.get(id));
+}
+
+/**
  * Batch function to load multiple movies by id
  */
 export async function batchMovies(ids: number[]) {
+  return batchQuery(ids, executeBatchMoviesQuery, (movie) => movie.id);
+}
+
+/**
+ * Helper function to execute a batch query for movies
+ */
+async function executeBatchMoviesQuery(ids: number[]) {
   let placeholders = ids.map(() => "?").join(",");
   // order by year
   let query = `
@@ -25,22 +65,24 @@ export async function batchMovies(ids: number[]) {
     .bind(...ids)
     .all();
 
-  return result.results
-    .map((movie: any) => {
-      movie.genre_ids = JSON.parse(movie.genre_ids);
-      movie.cast_ids = JSON.parse(movie.cast_ids);
-      return movie as Movie;
-    })
-    .sort(
-      // batch function results must be sorted in the same order as the input
-      (a, b) => ids.indexOf(a.id) - ids.indexOf(b.id),
-    );
+  return result.results.map((movie: any) => {
+    movie.genre_ids = JSON.parse(movie.genre_ids);
+    movie.cast_ids = JSON.parse(movie.cast_ids);
+    return movie as Movie;
+  });
 }
 
 /**
  * Batch function to load multiple actors by id
  */
 export async function batchActors(ids: number[]) {
+  return batchQuery(ids, executeBatchActorsQuery, (actor) => actor.id);
+}
+
+/**
+ * Helper function to execute a batch query for actors
+ */
+async function executeBatchActorsQuery(ids: number[]) {
   let placeholders = ids.map(() => "?").join(",");
   let query = `
     SELECT
@@ -61,14 +103,12 @@ export async function batchActors(ids: number[]) {
     .bind(...ids)
     .all();
 
-  return result.results
-    .map((actor: any) => {
-      actor.movie_ids = actor.movie_ids
-        ? actor.movie_ids.split(",").map(Number)
-        : [];
-      return actor as Actor;
-    })
-    .sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+  return result.results.map((actor: any) => {
+    actor.movie_ids = actor.movie_ids
+      ? actor.movie_ids.split(",").map(Number)
+      : [];
+    return actor as Actor;
+  });
 }
 
 export async function getFavorites(sessionId: string) {
@@ -76,7 +116,7 @@ export async function getFavorites(sessionId: string) {
     .prepare("SELECT * FROM favorites WHERE session_id = ?")
     .bind(sessionId)
     .all();
-
+  
   return result.results.map((favorite: any) => favorite.movie_id);
 }
 
@@ -85,7 +125,6 @@ export async function addFavorite(sessionId: string, movieId: number) {
   if (alreadyFavorite) {
     return true;
   }
-
   return await db
     .prepare("INSERT INTO favorites (session_id, movie_id) VALUES (?, ?)")
     .bind(sessionId, movieId)
@@ -104,7 +143,7 @@ export async function isFavorite(sessionId: string, movieId: number) {
     .prepare("SELECT id FROM favorites WHERE session_id = ? AND movie_id = ?")
     .bind(sessionId, movieId)
     .first();
-
+  
   return result !== null;
 }
 

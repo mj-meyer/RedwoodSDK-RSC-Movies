@@ -1,6 +1,6 @@
 "use server";
 
-import { addFavorite, removeFavorite } from "@/app/db.js";
+import { addFavorite, removeFavorite } from "@/db";
 import { requestInfo } from "rwsdk/worker";
 
 export async function updateFavorite(formData: FormData) {
