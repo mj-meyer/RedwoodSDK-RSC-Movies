@@ -16,6 +16,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
       />
       <link rel="modulepreload" href="/src/client.tsx" />
       <link rel="stylesheet" href={styles} />
+      <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     </head>
     <body className="font-instrumentSans pb-56">
       <div id="root">{children}</div>
