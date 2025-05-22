@@ -20,9 +20,9 @@ I tried to stick closely to the React Router example, though some aspects may no
 
 ### Batched Database Queries
 
-D1 has a limit of 32 variables per query. To handle this, I implemented a `batchQuery` utility that:
+D1 has a limit of [100 bound parameters per query](https://developers.cloudflare.com/d1/platform/limits/). To handle this, I implemented a `batchQuery` utility that:
 
-1. Chunks requests into groups of 30 or fewer
+1. Chunks requests into groups of 90 or fewer
 2. Preserves the original ordering of results
 3. Handles single-query optimization when under the limit
 
@@ -31,7 +31,7 @@ async function batchQuery<T, K>(
   ids: K[],
   batchFn: (chunk: K[]) => Promise<T[]>,
   getKey: (item: T) => K,
-  batchSize = 30, // D1 has a 32 variable limit
+  batchSize = 90, // D1 has a 100 bound parameter limit
 ) {
   // If we're under the limit, use a single query
   if (ids.length <= batchSize) {
@@ -94,6 +94,7 @@ pnpm dev
 ```
 
 > **Note:** The following steps are only necessary if you need to rebuild the migration or seed files:
+>
 > ```bash
 > pnpm db:export:schema  # Extract schema from SQLite for migrations
 > pnpm db:export:data    # Extract data from SQLite for seed files

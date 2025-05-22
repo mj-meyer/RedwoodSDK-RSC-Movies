@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 const db = env.DB;
 
 /**
- * Utility function to handle batch queries with D1's 32 variable limit
+ * Utility function to handle batch queries with D1's 100 bound parameters per query limit
  * Executes queries in chunks and preserves input order
  * https://developers.cloudflare.com/d1/platform/limits/
  */
@@ -11,12 +11,11 @@ async function batchQuery<T, K>(
   ids: K[],
   batchFn: (chunk: K[]) => Promise<T[]>,
   getKey: (item: T) => K,
-  batchSize = 30,
+  batchSize = 90,
 ) {
   // If we're under the limit, use a single query
   if (ids.length <= batchSize) {
     const results = await batchFn(ids);
-    // Create a map for O(1) lookups
     const resultMap = new Map(results.map((item) => [getKey(item), item]));
     // Return in exact same order as input ids
     return ids.map((id) => resultMap.get(id));
